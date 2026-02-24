@@ -1,16 +1,24 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const ConsultationSchema = new mongoose.Schema(
-  {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    expertName: { type: String },
-    scheduledAt: { type: Date, required: true },
-    notes: { type: String },
-    status: { type: String, enum: ['requested', 'confirmed', 'completed', 'cancelled'], default: 'requested' },
+const consultationSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
   },
-  { timestamps: true }
-);
+  email: {
+    type: String,
+    required: true,
+  },
+  problem: {
+    type: String,
+    required: true,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
-export default mongoose.model('Consultation', ConsultationSchema);
+const Consultation = mongoose.model("Consultation", consultationSchema);
 
-
+export default Consultation;

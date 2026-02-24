@@ -1,55 +1,113 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import express from "express";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
+
+import Consultation from "./models/Consultation.js";
+import HerbalPlant from "./models/HerbalPlant.js";
 
 
-
-// Load environment variables from .env
-// 1) Try process cwd .env (works when running from backend dir)
+// ================== CONFIG ==================
 dotenv.config();
-// 2) Also try backend/.env relative to this file (works when running from project root)
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/sanjeevani_garden';
+const MONGO_URI =
+  process.env.MONGO_URI ||
+  "mongodb://127.0.0.1:27017/sanjeevani_garden";
 
-// Built-in JSON parser
+app.use(cors());
 app.use(express.json());
 
-// Root route
-app.get('/', (req, res) => {
-  res.send('API is running!');
+
+// ================== ROOT ==================
+app.get("/", (req, res) => {
+  res.send("Sanjeevani Garden API running 🌿");
 });
 
-// Sample plants route
-app.get('/api/plants', (req, res) => {
-  res.json([
-    { commonName: 'Tulsi', scientificName: 'Ocimum tenuiflorum' },
-    { commonName: 'Neem', scientificName: 'Azadirachta indica' },
-    { commonName: 'Turmeric', scientificName: 'Curcuma longa' },
-  ]);
+
+// ================== CONSULT FORM SAVE ==================
+app.post("/api/consult", async (req, res) => {
+  try {
+    const data = req.body;
+
+    const newConsult = new Consultation(data);
+    await newConsult.save();
+
+    res.json({ success: true, message: "Consult saved in DB" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
-// Start server only after successful DB connection
+
+// ================== PLANTS API ==================
+
+// GET all plants
+app.get("/api/plants", async (req, res) => {
+  try {
+    const plants = await HerbalPlant.find();
+    res.json(plants);
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching plants" });
+  }
+});
+
+// ADD plant
+app.post("/api/plants", async (req, res) => {
+  try {
+    const plant = new HerbalPlant(req.body);
+    await plant.save();
+    res.json({ message: "Plant added successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE plant
+app.delete("/api/plants/:id", async (req, res) => {
+  try {
+    await HerbalPlant.findByIdAndDelete(req.params.id);
+    res.json({ message: "Plant deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// ================== START SERVER ==================
 async function start() {
   try {
-    mongoose.set('strictQuery', true);
     await mongoose.connect(MONGO_URI);
-    console.log('Connected to MongoDB');
+    console.log("✅ MongoDB Connected");
 
     app.listen(PORT, () => {
-      console.log(`API listening on :${PORT}`);
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
   } catch (err) {
-    console.error('Failed to connect to MongoDB');
-    console.error(err?.message || err);
-    process.exit(1);
+    console.error("❌ MongoDB connection failed");
+    console.error(err.message);
   }
 }
+import Feedback from "./models/Feedback.js";
+
+app.post("/api/feedback", async (req, res) => {
+  try {
+    const newFeedback = new Feedback(req.body);
+    await newFeedback.save();
+
+    res.json({ success: true, message: "Feedback saved" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Error saving feedback" });
+  }
+});
 
 start();
 
