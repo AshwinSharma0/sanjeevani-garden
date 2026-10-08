@@ -1,25 +1,26 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Leaf, ArrowLeft, ShoppingCart, Star, Truck, Shield, Heart } from "lucide-react"
 import { useLanguage } from "@/components/language-provider"
 import LanguageToggle from "@/components/language-toggle"
+import { useEffect, useState } from "react";
 
 export default function ShopPage() {
   const { t } = useLanguage()
   const [cart, setCart] = useState<any[]>([])
 
-  const plants = [
+  const initialPlants = [
     {
       id: 1,
       name: t("tulsi"),
       scientificName: "Ocimum tenuiflorum",
       price: 299,
       originalPrice: 399,
-      image: "/placeholder-l9a54.png",
+      image: "/tulsi-plant-healing.jpg",
       rating: 4.8,
       reviews: 156,
       inStock: true,
@@ -103,7 +104,7 @@ export default function ShopPage() {
       scientificName: "Mentha spicata",
       price: 149,
       originalPrice: 199,
-      image: "/fresh-mint-plant-in-pot.jpg",
+      image: "/Mint_leaves.jpg",
       rating: 4.4,
       reviews: 267,
       inStock: true,
@@ -126,6 +127,15 @@ export default function ShopPage() {
       delivery: t("freeDelivery"),
     },
   ]
+
+  const [plants, setPlants] = useState(initialPlants);
+
+  useEffect(() => {
+    fetch("http://localhost:4000/api/plants")
+      .then(res => res.json())
+      .then(data => setPlants(data))
+      .catch(err => console.log('Failed to fetch plants:', err));
+  }, []);
 
   const addToCart = (plant: any) => {
     setCart([...cart, plant])

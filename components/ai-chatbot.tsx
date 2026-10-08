@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, X, Send, Languages, Bot, User } from "lucide-react";
+import { useLayoutEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
   id: string;
@@ -13,51 +16,6 @@ interface Message {
   timestamp: Date;
   language?: "en" | "hi";
 }
-const HF_TOKEN = process.env.NEXT_PUBLIC_HF_TOKEN || null;
-
-// ----------------------------
-// HUGGING FACE CONFIG
-// ----------------------------
-// ----------------------------
-// HUGGING FACE CONFIG
-// ----------------------------
-const sendToHuggingFace = async (text: string) => {
-  const url = `https://api-inference.huggingface.co/models/{HF_MODEL}`;
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (HF_TOKEN) {
-    headers["Authorization"] = `Bearer ${HF_TOKEN}`;
-  }
-
-  const body = {
-    inputs: text,
-    parameters: {
-      max_new_tokens: 200,
-      temperature: 0.4,
-      top_p: 0.9,
-      repetition_penalty: 1.1,
-    },
-  };
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-
-  if (Array.isArray(data) && data[0]?.generated_text) {
-    return data[0].generated_text;
-  }
-
-  return "I could not get a proper response from the AI model.";
-};
-
-
 
 export default function AIChatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -74,42 +32,33 @@ export default function AIChatbot() {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState<"en" | "hi">("en");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  //const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto scroll
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-  useEffect(() => {
+    if (!chatContainerRef.current) return;
+
+    chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+};
+  useLayoutEffect(() => {
+
     scrollToBottom();
-  }, [messages]);
 
-  // ----------------------------
-  // SIMPLE LOCAL FALLBACK AI
-  // ----------------------------
-  const generateAIResponse = (text: string) => {
-    const msg = text.toLowerCase();
-
-    if (msg.includes("hello") || msg.includes("hi") || msg.includes("नमस्ते")) {
-      return currentLanguage === "en"
-        ? "Hello! Ask me about herbs, remedies, or translations."
-        : "नमस्ते! आप मुझसे जड़ी-बूटियों, उपचार या अनुवाद के बारे में पूछ सकते हैं।";
-    }
-
-    return currentLanguage === "en"
-      ? "Ask about a herb or symptom, for example: 'tulsi', 'cough', 'haldi'."
-      : "किसी जड़ी-बूटी या लक्षण के बारे में पूछें, जैसे: 'तुलसी', 'खांसी', 'हल्दी'।";
-  };
+}, [messages]);
 
   // ----------------------------
   // SEND MESSAGE
   // ----------------------------
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
+    const messageToSend = inputMessage.trim();
+
+    if (!messageToSend || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputMessage,
+      content: messageToSend,
       sender: "user",
       timestamp: new Date(),
       language: currentLanguage,
@@ -120,25 +69,44 @@ export default function AIChatbot() {
     setIsLoading(true);
 
     try {
-      let reply = "";
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages: [
+    ...messages,
+    userMessage,
+  ], }),
+      });
 
-      // Try Hugging Face first
-      try {
-        reply = await sendToHuggingFace(inputMessage);
-      } catch (err) {
-        console.warn("HF failed, using fallback:", err);
-        reply = generateAIResponse(inputMessage);
-      }
+      const data = await response.json();
+      const aiReply = data.reply || "Sorry, I couldn't generate a reply right now.";
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: reply,
+        content: aiReply,
         sender: "bot",
         timestamp: new Date(),
         language: currentLanguage,
       };
 
       setMessages((prev) => [...prev, botMessage]);
+      setTimeout(() => { scrollToBottom();
+
+      }, 50);
+    } catch (err) {
+      console.error("Chat request failed:", err);
+
+      const errorMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        content: "Sorry, I couldn't connect right now. Please try again.",
+        sender: "bot",
+        timestamp: new Date(),
+        language: currentLanguage,
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -162,9 +130,9 @@ export default function AIChatbot() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-96 max-w-[92vw] h-[540px] z-50">
-          <Card className="h-full flex flex-col shadow-2xl border-emerald-200">
-            <CardHeader className="bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-t-lg">
+        <div className="fixed bottom-6 right-6 z-50 w-[420px] max-w-[95vw] h-[700px] max-h-[90vh]">
+          <Card className="h-full flex flex-col overflow-hidden shadow-2xl border-emerald-200">
+            <CardHeader className="sticky top-0 z-10 bg-gradient-to-r from-emerald-500 to-green-600 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Bot className="h-5 w-5" />
@@ -195,8 +163,11 @@ export default function AIChatbot() {
             </CardHeader>
 
             {/* Messages */}
-            <CardContent className="flex-1 flex flex-col p-0">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white">
+            <CardContent className="flex flex-col h-full p-0 overflow-hidden">
+              <div
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+              >
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
@@ -205,8 +176,8 @@ export default function AIChatbot() {
                     <div
                       className={`max-w-[80%] p-3 rounded-lg ${
                         msg.sender === "user"
-                          ? "bg-emerald-500 text-white"
-                          : "bg-gray-100 text-gray-800"
+                          ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white"
+                          : "bg-emerald-50 border border-emerald-100 text-gray-800"
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1">
@@ -215,7 +186,66 @@ export default function AIChatbot() {
                           {msg.sender === "user" ? "You" : "AI Assistant"}
                         </span>
                       </div>
-                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                      
+                      <div 
+                      className="
+                      prose
+                      prose-sm
+                      max-w-none
+                      prose-headings:text-emerald-700
+                      prose-strong:text-emerald-800
+                      prose-li:marker:text-emerald-600
+                      prose-p:leading-7"
+                      >
+                        <ReactMarkdown
+  remarkPlugins={[remarkGfm]}
+  components={{
+    h1: ({ children }) => (
+      <h1 className="text-xl font-bold text-emerald-700 mb-3">{children}</h1>
+    ),
+    h2: ({ children }) => (
+      <h2 className="text-lg font-semibold text-emerald-700 mb-2">{children}</h2>
+    ),
+    h3: ({ children }) => (
+      <h3 className="text-base font-semibold text-emerald-700 mb-2">{children}</h3>
+    ),
+    p: ({ children }) => (
+      <p className="mb-3 leading-7">{children}</p>
+    ),
+    ul: ({ children }) => (
+      <ul className="list-disc pl-5 mb-3 space-y-1">{children}</ul>
+    ),
+    ol: ({ children }) => (
+      <ol className="list-decimal pl-5 mb-3 space-y-1">{children}</ol>
+    ),
+    li: ({ children }) => (
+      <li>{children}</li>
+    ),
+    strong: ({ children }) => (
+      <strong className="font-semibold text-emerald-800">{children}</strong>
+    ),
+    code: ({ children }) => (
+      <code className="bg-gray-100 rounded px-1 py-0.5 text-sm">
+        {children}
+      </code>
+    ),
+  }}
+>
+  {msg.content}
+</ReactMarkdown>
+                          </div>
+                      <p
+                      className={`text-[10px] mt-2 ${
+                        msg.sender === "user"
+                        ? "text-emerald-100"
+                        : "text-gray-500"
+                        }`}
+                    >
+                      {new Date(msg.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        })}
+                        </p>
                     </div>
                   </div>
                 ))}
@@ -240,12 +270,13 @@ export default function AIChatbot() {
                     </div>
                   </div>
                 )}
+                <div className="h-24"></div>
 
-                <div ref={messagesEndRef} />
+                
               </div>
 
               {/* Input */}
-              <div className="border-t p-3 bg-white">
+              <div className="border-t bg-white p-3 flex-shrink-0">
                 <div className="flex gap-2">
                   <Input
                     value={inputMessage}
@@ -256,7 +287,10 @@ export default function AIChatbot() {
                         : "जड़ी-बूटियों या अनुवाद के बारे में पूछें..."
                     }
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSendMessage();
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
                     }}
                     className="flex-1"
                   />
@@ -266,7 +300,8 @@ export default function AIChatbot() {
                     disabled={isLoading || !inputMessage.trim()}
                     className="bg-emerald-500 hover:bg-emerald-600"
                   >
-                    <Send className="h-4 w-4" />
+                    {isLoading ? "Thinking..." : <Send className="h-4 w-4" />}
+                    
                   </Button>
                 </div>
               </div>

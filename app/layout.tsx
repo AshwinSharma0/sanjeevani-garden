@@ -1,4 +1,5 @@
 import type React from "react"
+import './globals.css'
 import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
@@ -6,7 +7,6 @@ import { Analytics } from "@vercel/analytics/next"
 import { LanguageProvider } from "@/components/language-provider"
 import { ThemeProvider } from "next-themes"
 import { Suspense } from "react"
-import "./globals.css"
 import SiteNav from "@/components/site-nav"
 
 const geistSans = GeistSans
@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: "Sanjeevani Garden — Herbal Wellness & Plant Remedies",
   description: "Discover medicinal plants, filter by symptoms, and consult experts at Sanjeevani Garden.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  icons: {
+    icon: '/placeholder-logo.svg',
+  },
   openGraph: {
     title: 'Sanjeevani Garden',
     description: 'Discover medicinal plants, filter by symptoms, and consult experts.',

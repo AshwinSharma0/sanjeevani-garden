@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import Consultation from "./models/Consultation.js";
+import Feedback from "./models/Feedback.js";
 import HerbalPlant from "./models/HerbalPlant.js";
 
 
@@ -80,6 +81,19 @@ app.delete("/api/plants/:id", async (req, res) => {
   }
 });
 
+// ================== FEEDBACK API ==================
+app.post("/api/feedback", async (req, res) => {
+  try {
+    const newFeedback = new Feedback(req.body);
+    await newFeedback.save();
+
+    res.json({ success: true, message: "Feedback saved" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Error saving feedback" });
+  }
+});
+
 
 // ================== START SERVER ==================
 async function start() {
@@ -95,7 +109,9 @@ async function start() {
     console.error(err.message);
   }
 }
-import Feedback from "./models/Feedback.js";
+
+
+
 
 app.post("/api/feedback", async (req, res) => {
   try {
